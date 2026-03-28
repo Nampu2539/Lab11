@@ -1,5 +1,6 @@
 from airflow import DAG
 from airflow.operators.python import PythonOperator, BranchPythonOperator
+from airflow.operators.empty import EmptyOperator
 from datetime import datetime, timedelta
 import pandas as pd
 import os
@@ -35,10 +36,10 @@ def split_record(df):
     mask_errors = df.isnull().any(axis=1)
     return df[~mask_errors].copy(), df[mask_errors].copy()
 
-def convert_to_parquet(df, output_path):
+def save_parquet(df, output_path):
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
     df.to_parquet(output_path, index=False)
-    print(f"  Saved → {output_path}  ({len(df):,} rows)")
+    print(f"  Saved -> {output_path}  ({len(df):,} rows)")
 
 def task_check_input(**context):
     print(f"[Check_Input] Loading '{INPUT_FILE}' ...")
@@ -55,7 +56,7 @@ def task_branch(**context):
 def task_convert_clean(**context):
     df = load_input(INPUT_FILE)
     print("[Issue Found?] No  ->  Convert to parquet")
-    convert_to_parquet(df, OUTPUT_CLEAN)
+    save_parquet(df, OUTPUT_CLEAN)
 
 def task_split_record(**context):
     df = load_input(INPUT_FILE)
@@ -64,18 +65,20 @@ def task_split_record(**context):
     df_clean, df_errors = split_record(df)
     print(f"  Clean rows : {len(df_clean):,}")
     print(f"  Error rows : {len(df_errors):,}")
-    convert_to_parquet(df_clean,  OUTPUT_CLEAN)
-    convert_to_parquet(df_errors, OUTPUT_ERRORS)
+    save_parquet(df_clean,  OUTPUT_CLEAN)
+    save_parquet(df_errors, OUTPUT_ERRORS)
 
 with DAG(
     dag_id="movie_ratings_pipeline",
     default_args=default_args,
     description="Check input -> split or convert to parquet",
-    schedule_interval="0 8 * * *",  # ทุกวัน 08:00
+    schedule_interval="0 8 * * *",
     start_date=datetime(2024, 1, 1),
     catchup=False,
     tags=["pipeline"],
 ) as dag:
+
+    start = EmptyOperator(task_id="start")
 
     check_input = PythonOperator(
         task_id="check_input",
@@ -97,4 +100,9 @@ with DAG(
         python_callable=task_split_record,
     )
 
-    check_input >> branch >> [convert_to_parquet_task, split_record_task]
+    end = EmptyOperator(
+        task_id="end",
+        trigger_rule="none_failed_min_one_success",
+    )
+
+    start >> check_input >> branch >> [convert_to_parquet_task, split_record_task] >> end
