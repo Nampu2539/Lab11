@@ -1,0 +1,21 @@
+[2026-03-28T08:20:54.178+0000] {local_task_job_runner.py:120} INFO - ::group::Pre task execution logs
+[2026-03-28T08:20:54.211+0000] {taskinstance.py:2076} INFO - Dependencies all met for dep_context=non-requeueable deps ti=<TaskInstance: movie_ratings_pipeline.issue_found manual__2026-03-28T08:20:51.158712+00:00 [queued]>
+[2026-03-28T08:20:54.224+0000] {taskinstance.py:2076} INFO - Dependencies all met for dep_context=requeueable deps ti=<TaskInstance: movie_ratings_pipeline.issue_found manual__2026-03-28T08:20:51.158712+00:00 [queued]>
+[2026-03-28T08:20:54.226+0000] {taskinstance.py:2306} INFO - Starting attempt 1 of 2
+[2026-03-28T08:20:54.242+0000] {taskinstance.py:2330} INFO - Executing <Task(BranchPythonOperator): issue_found> on 2026-03-28 08:20:51.158712+00:00
+[2026-03-28T08:20:54.248+0000] {standard_task_runner.py:63} INFO - Started process 1122 to run task
+[2026-03-28T08:20:54.251+0000] {standard_task_runner.py:90} INFO - Running: ['***', 'tasks', 'run', 'movie_ratings_pipeline', 'issue_found', 'manual__2026-03-28T08:20:51.158712+00:00', '--job-id', '30', '--raw', '--subdir', 'DAGS_FOLDER/pipeline_dag.py', '--cfg-path', '/tmp/tmpshyk6ccw']
+[2026-03-28T08:20:54.255+0000] {standard_task_runner.py:91} INFO - Job 30: Subtask issue_found
+[2026-03-28T08:20:54.314+0000] {task_command.py:426} INFO - Running <TaskInstance: movie_ratings_pipeline.issue_found manual__2026-03-28T08:20:51.158712+00:00 [running]> on host e95f35fcf722
+[2026-03-28T08:20:54.400+0000] {taskinstance.py:2648} INFO - Exporting env vars: AIRFLOW_CTX_DAG_OWNER='***' AIRFLOW_CTX_DAG_ID='movie_ratings_pipeline' AIRFLOW_CTX_TASK_ID='issue_found' AIRFLOW_CTX_EXECUTION_DATE='2026-03-28T08:20:51.158712+00:00' AIRFLOW_CTX_TRY_NUMBER='1' AIRFLOW_CTX_DAG_RUN_ID='manual__2026-03-28T08:20:51.158712+00:00'
+[2026-03-28T08:20:54.402+0000] {taskinstance.py:430} INFO - ::endgroup::
+[2026-03-28T08:20:54.413+0000] {baseoperator.py:399} WARNING - BranchPythonOperator.execute cannot be called outside TaskInstance!
+[2026-03-28T08:20:54.426+0000] {python.py:237} INFO - Done. Returned value was: split_record
+[2026-03-28T08:20:54.427+0000] {branch.py:36} INFO - Branch into split_record
+[2026-03-28T08:20:54.428+0000] {skipmixin.py:178} INFO - Following branch split_record
+[2026-03-28T08:20:54.447+0000] {skipmixin.py:246} INFO - Skipping tasks [('convert_to_parquet', -1)]
+[2026-03-28T08:20:54.486+0000] {taskinstance.py:441} INFO - ::group::Post task execution logs
+[2026-03-28T08:20:54.513+0000] {taskinstance.py:1206} INFO - Marking task as SUCCESS. dag_id=movie_ratings_pipeline, task_id=issue_found, run_id=manual__2026-03-28T08:20:51.158712+00:00, execution_date=20260328T082051, start_date=20260328T082054, end_date=20260328T082054
+[2026-03-28T08:20:54.544+0000] {local_task_job_runner.py:240} INFO - Task exited with return code 0
+[2026-03-28T08:20:54.576+0000] {taskinstance.py:3498} INFO - 1 downstream tasks scheduled from follow-on schedule check
+[2026-03-28T08:20:54.579+0000] {local_task_job_runner.py:222} INFO - ::endgroup::
