@@ -4,6 +4,9 @@ from airflow.operators.empty import EmptyOperator
 from datetime import datetime, timedelta
 import pandas as pd
 import os
+import logging
+
+log = logging.getLogger(__name__)
 
 # ─────────────────────────────────────────────
 # CONFIGURATION
@@ -39,34 +42,61 @@ def split_record(df):
 def save_parquet(df, output_path):
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
     df.to_parquet(output_path, index=False)
-    print(f"  Saved -> {output_path}  ({len(df):,} rows)")
+    log.info(f"  Saved -> {output_path}  ({len(df):,} rows)")
 
 def task_check_input(**context):
-    print(f"[Check_Input] Loading '{INPUT_FILE}' ...")
+    log.info("=" * 50)
+    log.info("TASK: check_input")
+    log.info("=" * 50)
+    log.info(f"INPUT PATH : {INPUT_FILE}")
     df = load_input(INPUT_FILE)
-    print(f"  Loaded {len(df):,} rows x {len(df.columns)} columns")
+    log.info(f"Total rows    : {len(df):,}")
+    log.info(f"Total columns : {len(df.columns)}")
+    log.info(f"Columns       : {list(df.columns)}")
+    null_per_col = df.isnull().sum()
+    log.info("Null count per column:")
+    for col, cnt in null_per_col.items():
+        log.info(f"  {col}: {cnt}")
     has_nulls = df.isnull().any(axis=1).any()
-    print(f"  Null rows found: {int(df.isnull().any(axis=1).sum())}")
+    null_rows = int(df.isnull().any(axis=1).sum())
+    log.info(f"Rows with null : {null_rows:,}")
+    log.info(f"Issue found   : {has_nulls}")
     context["ti"].xcom_push(key="has_nulls", value=has_nulls)
 
 def task_branch(**context):
+    log.info("=" * 50)
+    log.info("TASK: issue_found (branch)")
+    log.info("=" * 50)
     has_nulls = context["ti"].xcom_pull(key="has_nulls", task_ids="check_input")
-    return "split_record" if has_nulls else "convert_to_parquet"
+    decision = "split_record" if has_nulls else "convert_to_parquet"
+    log.info(f"Decision -> {decision}")
+    return decision
 
 def task_convert_clean(**context):
+    log.info("=" * 50)
+    log.info("TASK: convert_to_parquet")
+    log.info("=" * 50)
+    log.info("No null values found — converting full dataframe")
     df = load_input(INPUT_FILE)
-    print("[Issue Found?] No  ->  Convert to parquet")
+    log.info(f"INPUT  : {INPUT_FILE}  ({len(df):,} rows)")
     save_parquet(df, OUTPUT_CLEAN)
+    log.info(f"OUTPUT : {OUTPUT_CLEAN}")
 
 def task_split_record(**context):
+    log.info("=" * 50)
+    log.info("TASK: split_record")
+    log.info("=" * 50)
     df = load_input(INPUT_FILE)
     null_count = int(df.isnull().any(axis=1).sum())
-    print(f"[Issue Found?] Yes  ->  {null_count:,} row(s) contain null values")
+    log.info(f"INPUT        : {INPUT_FILE}  ({len(df):,} rows)")
+    log.info(f"Rows with null: {null_count:,}")
     df_clean, df_errors = split_record(df)
-    print(f"  Clean rows : {len(df_clean):,}")
-    print(f"  Error rows : {len(df_errors):,}")
+    log.info(f"Clean rows   : {len(df_clean):,}")
+    log.info(f"Error rows   : {len(df_errors):,}")
     save_parquet(df_clean,  OUTPUT_CLEAN)
     save_parquet(df_errors, OUTPUT_ERRORS)
+    log.info(f"OUTPUT clean  : {OUTPUT_CLEAN}")
+    log.info(f"OUTPUT errors : {OUTPUT_ERRORS}")
 
 with DAG(
     dag_id="movie_ratings_pipeline",
@@ -105,4 +135,11 @@ with DAG(
         trigger_rule="none_failed_min_one_success",
     )
 
-    start >> check_input >> branch >> [convert_to_parquet_task, split_record_task] >> end
+    # branch ไปทั้งสองทาง
+    start >> check_input >> branch >> [split_record_task, convert_to_parquet_task]
+
+    # เชื่อม split_record -> convert_to_parquet ในเชิง UI (แต่ convert จะ skipped ถ้า branch ไม่เลือก)
+    split_record_task >> convert_to_parquet_task
+
+    # ทั้งคู่วิ่งมาหา end
+    convert_to_parquet_task >> end
